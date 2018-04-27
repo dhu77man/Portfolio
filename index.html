@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <!--  
+        Everything on this website - besides the fonts and jQuery itself - is made entirely by me.
+        Copyright 2018 Darryl Huffman
+    -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Darryl Huffman</title>
+
+    <link rel="stylesheet" href="bin/css/reset.css">
+    <link rel="stylesheet" href="bin/css/styles.css">
+
+    <link href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700" rel="stylesheet">
+</head>
+<body>
+    <div id="root">
+        <div id="app">
+            <div class="section header" id="welcome" role="Welcome">
+                <div id="welcomeText">
+                    <h1><span>Darryl Huffman</span></h1>
+                    <div class="content">
+                        <p class="left">
+                            Web Designer &amp; Developer from Hagerstown, MD
+                        </p>
+                        <p class="right">
+                            Jack of all web, putting innovative technologies in practice
+                        </p>
+                        <div class="clear-fix"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="about" class="section" role="About">
+                <h1>About Me</h1>
+                <div class="textblock">
+                    <p>
+                        Hello! My name is Darryl Huffman, and welcome to my web portfolio! I'm a self-taught web 
+                        developer &amp; designer from the Hagerstown, MD area. I currently am attending college at
+                        Hagerstown Community College for a Web and Multimedia AAS degree.
+                    </p>
+                    <p>
+                        I strive to continually grow in this field, by keeping up with the latest languages and libraries
+                        so that I can create better and more creative web applications that are clea, efficient, and modular.
+                        Whether it be front or back end, developing or designing, I really love to do both.
+                    </p>
+                    <p>
+                        Javascript has become one of my most favorite languages to work with whether it be on the client
+                        or server with Node. However, my personal preference aside, I use PHP, HTML, CSS, MySQL, or 
+                        anything else daily so that I can get the job done.
+                    </p>
+                </div>
+                <div class="clear-fix"></div>
+            </div>
+
+
+            <div class="section" id="projects" role="Projects">
+                <h1>Projects</h1>
+                <div id="featuredProjects"></div>
+                <div class="clear-fix"></div>
+            </div>
+        </div>
+    </div>
+
+
+    <script id="colorize" type="x-shader/x-fragment">
+        uniform vec2 resolution;
+        uniform sampler2D texture;
+        uniform float scale;
+    
+        float map(float value, float inMin, float inMax, float outMin, float outMax) {
+            return outMin + (outMax - outMin) * (value - inMin) / (inMax - inMin);
+        }
+    
+        void main(void)
+            {
+                float invScale = 1.0/scale;
+                vec2 uv = (gl_FragCoord.xy / resolution / scale) + ((1.0/scale*0.5 + (0.5 - 1.0/scale))); 
+    
+            vec4 sourceRamp = texture2D( texture, uv ) * 3.0;
+        
+            float c = sourceRamp.y;
+            float rc = floor(c+0.5);
+
+            vec2 lbrgb = vec2(38., 209.) / 255.;
+            lbrgb = vec2(26., 102.) / 255.;
+            vec2 brgb = vec2(lbrgb.x - 26., lbrgb.y - 102.) / 255.;
+            
+            vec3 color = vec3(
+                rc  * 1. + lbrgb.x, 
+                rc * 1. + lbrgb.y,
+                1.
+            );
+        
+            gl_FragColor = vec4( color, 1.0);
+        }
+    </script>
+    
+    <script id="fragmentShader" type="x-shader/x-fragment">
+        uniform vec2 res;
+        uniform sampler2D bufferTexture;
+        uniform float time;
+    
+        uniform vec3 mouse;
+        uniform vec3 wanderer1;
+    
+        uniform float dA;
+        uniform float dB;
+        uniform float feed;
+        uniform float k;
+    
+        uniform float fV; // feed vary rate (Y)
+        uniform float kV; // kill vary rate (X)
+    
+        uniform float clear;
+        uniform float drawSize;
+        uniform float seed;
+        uniform float seedX;
+        
+
+
+        uniform vec4 title;
+        uniform vec4 textRight;
+        uniform vec4 textLeft;
+
+    
+        int count = 0;
+
+
+        int inBounds(vec4 p){
+            p.y = res.y - p.y;
+
+
+            if(
+                (gl_FragCoord.x <= p.x + p.z && gl_FragCoord.x >= p.x &&
+                gl_FragCoord.y <= p.y && gl_FragCoord.y >= p.y - p.w)
+            ){
+                return 1;
+            }
+            return 0;
+        }
+    
+        void main() 
+        {
+            // load current values for a and b
+            vec4 currentColor = texture2D(bufferTexture, gl_FragCoord.xy / res.xy);
+            float a = currentColor.r;
+            float b = currentColor.g;
+    
+            //Get the distance of the current pixel from the mouse
+            float dist = distance(mouse.xy, gl_FragCoord.xy);
+            if (mouse.z == 1.0 && dist < drawSize)  {
+                float ratio = 1.0 - dist/drawSize;
+                b += 0.5 * ratio * 1.0;
+            }
+
+            dist = distance(wanderer1.xy, gl_FragCoord.xy);
+            if(dist < wanderer1.z){
+                float ratio = 1.0 - dist/wanderer1.z;
+                b += 0.5 * ratio * 1.0;
+            }
+
+            float f = feed - (((gl_FragCoord.x / res.x) + 1.) * .018) * 0.85;
+            float k2 = k - (((gl_FragCoord.y / res.y) + .5) * .002) * 0.85;
+            
+
+            if(inBounds(textRight) == 1){
+                f = .05;
+                k2 = .005;
+            } else if(inBounds(title) == 1 || inBounds(textLeft) == 1){
+                f = .005;
+                k2 = .0458;
+            }
+    
+            float offset = 1.0;
+    
+            // get pixels from surrounding grid
+            vec4 N = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x, gl_FragCoord.y/res.y - offset/res.y));
+            vec4 S = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x, gl_FragCoord.y/res.y + offset/res.y));
+            vec4 E = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x + offset/res.x, gl_FragCoord.y/res.y));
+            vec4 W = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x - offset/res.x, gl_FragCoord.y/res.y));
+    
+            vec4 NE = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x + offset/res.x, gl_FragCoord.y/res.y + offset/res.y));
+            vec4 NW = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x - offset/res.x, gl_FragCoord.y/res.y + offset/res.y));
+            vec4 SE = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x + offset/res.x, gl_FragCoord.y/res.y - offset/res.y));
+            vec4 SW = texture2D(bufferTexture, vec2(gl_FragCoord.x/res.x - offset/res.x, gl_FragCoord.y/res.y - offset/res.y));
+    
+            // diffusion values
+            float diff1 = 0.2;
+            float diff2 = 0.05;
+    
+            // calculate laplace of A
+            float lapA = 0.0;
+            lapA += a * -1.0;
+            lapA += N.r * diff1;
+            lapA += S.r * diff1;
+            lapA += E.r * diff1;
+            lapA += W.r * diff1;
+            lapA += NE.r * diff2;
+            lapA += NW.r * diff2;
+            lapA += SE.r * diff2;
+            lapA += SW.r * diff2;
+    
+    
+            // calculate laplace of B
+            float lapB = 0.0;
+            lapB += b * -1.0;
+            lapB += N.g * diff1;
+            lapB += S.g * diff1;
+            lapB += E.g * diff1;
+            lapB += W.g * diff1;
+            lapB += NE.g * diff2;
+            lapB += NW.g * diff2;
+            lapB += SE.g * diff2;
+            lapB += SW.g * diff2;
+    
+            float newk = k2;
+            float newf = f;
+            if(kV > 0.){
+                float newk = (gl_FragCoord.x/res.x) * kV;
+                float newf = (gl_FragCoord.y/res.y) * fV;
+            }
+    
+            // calculate diffusion reaction
+            a += ((dA * lapA) - (a*b*b) + (newf * (1.0-a))) * 1.0;
+            b += ((dB * lapB) + (a*b*b) - ((newk + newf) * b)) * 1.0;
+    
+    
+            a = clamp(a, 0.0, 1.0);
+            b = clamp(b, 0.0, 1.0);
+            
+            if(clear == 1.0){
+                b = 0.;
+                a = 1.0;
+            }
+
+            vec2 st = gl_FragCoord.xy/res.xy;
+            if(seed == 1. && gl_FragCoord.x > seedX - 2.5 && gl_FragCoord.x < seedX + 2.5 && sin(gl_FragCoord.y / 10.) == 1.){
+                b = 0.;
+                a = 1.;
+            }
+
+            vec4 newColor = vec4(a, b, 0.031372549, 1.0);
+            gl_FragColor = newColor;
+        }
+    </script>
+
+    <script src="bin/js/libraries/jquery.min.js"></script>
+    <script src="bin/js/libraries/three.min.js"></script>
+    <script src="bin/js/libraries/perlin.js"></script>
+    <script src="bin/js/canvasHelper.js"></script>
+    <script src="bin/js/reaction-diffusion.js"></script>
+    <script src="bin/js/libraries/webscroll.js"></script>
+    <script src="bin/js/portfolio.js"></script>
+    <script src="bin/js/script.js"></script>
+</body>
+</html>

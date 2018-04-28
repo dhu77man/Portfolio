@@ -1,6 +1,6 @@
 $(document).ready(function(){
 	var headerContainer = document.querySelector('#welcomeText');
-	var headerTitle = document.querySelector('#welcomeText h1 span');
+	var headerTitle = document.querySelector('#welcomeText h1 .coord');
 	var textContent = document.querySelector('#welcomeText .content p');
 
 	document.querySelector('#welcomeText .content').style.width = document.querySelector('#welcomeText h1 span').offsetWidth+'px';
